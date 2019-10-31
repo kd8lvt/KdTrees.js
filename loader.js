@@ -38,7 +38,6 @@ window.kd.dynamicLoader = {
 				target = depths[i];
 				if (target.depth == currentDepth) targets.push(target);
 			}
-			
 			curWidest = 0;
 			name = "";
 			for (i in targets) {
@@ -49,8 +48,7 @@ window.kd.dynamicLoader = {
 					name=skill.name;
 				} 
 			}
-			widest.push({width:curWidest,skill:name});
-
+			widest.push({depth:currentDepth,width:curWidest,skill:name});
 			currentDepth++;
 			skillFound = false;
 			for (i in depths) {
@@ -62,18 +60,18 @@ window.kd.dynamicLoader = {
 			if (!skillFound) {
 				break;
 			}
+			console.log('---------------------------');
 		}
-
 		return widest;
 	},
 	calculateWidth: function(skill) {
 		let longest = 0;
 		let width = 0;
-	    for (let i in skill.lines) {
-	      kd.ctx.font = skill.lines[longest].size + 'px fontello,"Titillium Web"';
-	      let oldT = kd.ctx.measureText(skill.lines[longest].text).width;
-	      kd.ctx.font = skill.lines[i].size + 'px fontello,"Titillium Web"';
-	      let newT = kd.ctx.measureText(skill.lines[i].text).width;
+	    for (let i in skill.texts) {
+	      kd.ctx.font = skill.texts[longest].size + 'px fontello,"Titillium Web"';
+	      let oldT = kd.ctx.measureText(skill.texts[longest].text).width;
+	      kd.ctx.font = skill.texts[i].size + 'px fontello,"Titillium Web"';
+	      let newT = kd.ctx.measureText(skill.texts[i].text).width;
 	      if (newT > oldT) { longest = i; width = newT;};
 	    }
 
@@ -93,6 +91,10 @@ window.kd.dynamicLoader = {
 					lowest = siblings[i].pos.y;
 				}
 			}
+			console.log(skill.name,lowest);
+			if (lowest == 0) {
+				lowest = 95;
+			}
 			skill.pos.y = lowest+55;
 			return lowest+55;
 		}
@@ -101,8 +103,13 @@ window.kd.dynamicLoader = {
 			if (find(depths,target.name,"name").depth == depth && target.name != skill.name) siblings.push(target);
 		}
 		if (siblings.length > 0) {
-			skill.pos.y = siblings.length*55;
-			return siblings.length*55;
+			if (siblings.length == 1) {
+				skill.pos.y == 160;
+				return 160;
+			} else {
+				skill.pos.y = siblings.length*55;
+				return siblings.length*55;
+			}
 		} else {
 			skill.pos.y=160;
 			return 160;
@@ -111,19 +118,19 @@ window.kd.dynamicLoader = {
 	getX: function(skill,depths,widest) {
 		depth = find(depths,skill.name,"name");
 		if (depth.depth > 1) {
-			width = widest[depth.depth-1];
-			prevPos = find(skills,width.skill,"name").pos.x;
-			skill.pos.y = (width.width+prevPos+100);
-			return (width.width+prevPos+100);
+			width = find(widest,depth.depth-1,"depth");
+			console.log(width);
+			prevPos = skills.find(skill => skill.name == width.skill).pos.x;
+			skill.pos.x = (width.width+prevPos);
+			return (width.width+prevPos);
 		} else {
+			skill.pos.x = 50;
 			return 50;
 		}
 	},
 	getPositions: async function() {
 		let depths = kd.dynamicLoader.getDepths();
 		let widest = kd.dynamicLoader.getWidestPerDepth(depths);
-		//console.log(widest);
-		console.log(skills);
 		for (i in skills) {
 			skills[i].pos = {x:0,y:0};
 		}
@@ -131,10 +138,9 @@ window.kd.dynamicLoader = {
 			skill = await find(skills,depths[i].name,"name");
 			skill.pos.x = await kd.dynamicLoader.getX(skill,depths,widest);
 			skill.pos.y = await kd.dynamicLoader.getY(skill,depths);
-			console.log(skill.name,skill.pos)
-			window.kd.skills.push(new Skill(skill.name,[skill.pos.x,skill.pos.y],skills[i].linesTo,skill.complete,skill.hoursWorkedOn,skill.requirements));
-			for (j in skill.lines) {
-				window.kd.skills[window.kd.skills.length-1].addText(skill.lines[j].id,skill.lines[j].text,skill.lines[j].size);
+			window.kd.skills.push(new Skill(skill.name,skill.pos,skill.linesTo,skill.complete,skill.hoursWorkedOn,skill.requirements));
+			for (j in skill.texts) {
+				window.kd.skills[window.kd.skills.length-1].addText(skill.texts[j].id,skill.texts[j].text,skill.texts[j].size);
 			}
 		}
 	}

@@ -26,7 +26,7 @@ canvas.height = window.innerHeight;
 class Skill {
   constructor(name,pos,linesTo,complete,hoursWorkedOn,requirements,texts) {
     if (name == null) { console.error('Error! All Skills need a name!'); return 'nameErr1' } else {this.name = name};
-    if (pos == null) { console.error('Error! All Skills need a position!'); return 'posErr1' } else if (typeof pos != typeof [100,100]) { console.error('Error! Skill Position should be an array!'); return 'posErr2' } else { this.pos = pos }; 
+    if (pos == null) { console.error('Error! All Skills need a position!'); return 'posErr1' } else if (typeof pos != typeof {x:0,y:0}) { console.error('Error! Skill Position should be an array!'); return 'posErr2' } else { this.pos = pos }; 
     this.linesTo = linesTo || [];
     this.background = "rgba(255,255,255,255)";
     if (complete == true) {
@@ -39,6 +39,37 @@ class Skill {
     this.requirements = requirements;
     this.internalText = texts||[];
     this.lineHeight = 0;
+    this.gray = 0;
+
+    if (this.parents != null && this.parents.length > 0) {
+      var parentStatuses = [];
+      for (const parent of this.parents) {
+        const parent_skill = window.kd.skills.find(skill => skill.name == parent);
+        console.log(parent_skill);
+        if (parent_skill) {
+          parentStatuses.push({gray:parent_skill.gray,complete:parent_skill.complete});
+        }
+      }
+      let worst = [];
+      for (status of parentStatuses) {
+        _worst = '';
+        if (_worst <= 0 && status.complete == true) {
+          _worst = 0;
+        }
+        if (_worst <= 1 && (status.complete == 'partial' || status.complete == 'false' || status.gray == 0)) {
+          _worst = 1;
+        }
+        if (_worst <= 2 && (status.gray == 1 || status.gray == 2)) {
+          _worst = 2;
+        }
+        worst.push(_worst);
+      }
+      for (status of worst) {
+        if (status > this.gray) {
+          this.gray = status;
+        }
+      }
+    }
   }
   addText(id,text,size) {
     let textSize = size || 8;
@@ -48,58 +79,71 @@ class Skill {
     this.linesTo.push(childId);
   }
   draw(ctx) {
+    if (this.internalText.length < 0) return;
+    if (kd.debug) console.log(this.name,this.gray);
+    if (this.gray == 3) return;
+    if (this.gray == 2) {
+      this.background == "rgb(75,75,75)";
+    }
+
     let longest = 0;
     for (let i in this.internalText) {
-      kd.ctx.font = this.internalText[longest].fontSize + 'px fontello,"Titillium Web"';
+      ctx.font = this.internalText[longest].fontSize + 'px fontello,"Titillium Web"';
       let oldT = kd.ctx.measureText(this.internalText[longest].text).width;
-      kd.ctx.font = this.internalText[i].fontSize + 'px fontello,"Titillium Web"';
+      ctx.font = this.internalText[i].fontSize + 'px fontello,"Titillium Web"';
       let newT = kd.ctx.measureText(this.internalText[i].text).width;
       if (newT > oldT) longest = i;
     }
     var text = this.internalText[longest].text;
-    kd.ctx.font = this.internalText[longest].fontSize + 'px fontello,"Titillium Web"';
+    ctx.font = this.internalText[longest].fontSize + 'px fontello,"Titillium Web"';
     var textWidth = kd.ctx.measureText(text).width+10;
     var lineHeight = 0;
     var i=0;
-    kd.ctx.fillStyle = this.background;
+    ctx.fillStyle = this.background;
     if (this.complete == "partial") {
       if (this.hoursWorkedOn && this.requirements.time) {
-        kd.ctx.fillRect(this.pos[0],this.pos[1],Math.round((this.hoursWorkedOn/this.requirements.time)*this.textWidth),this.lineHeight)
+        ctx.fillRect(this.pos.x,this.pos.y,Math.round((this.hoursWorkedOn/this.requirements.time)*this.textWidth),this.lineHeight)
       } else {
-        kd.ctx.fillRect(this.pos[0],this.pos[1],this.textWidth/2,this.lineHeight);
+        ctx.fillRect(this.pos.x,this.pos.y,this.textWidth/2,this.lineHeight);
       }
     } else {
-      kd.ctx.fillRect(this.pos[0],this.pos[1],this.textWidth,this.lineHeight);
+      ctx.fillRect(this.pos.x,this.pos.y,this.textWidth,this.lineHeight);
     }
-    kd.ctx.fillStyle = "#000000";
+    ctx.fillStyle = "#000000";
     for (let text of this.internalText) {
       i++
+      if (text.greyOut == true && this.grey == true) continue;
       var fontsize = text.fontSize;
       var fontface = 'fontello,"Titillium Web"';
       let curLine = lineHeight;
       lineHeight += (fontsize * 1.286);
 
-      kd.ctx.font = fontsize + 'px ' + fontface;
+      ctx.font = fontsize + 'px ' + fontface;
 
-      kd.ctx.textAlign = 'left';
-      kd.ctx.textBaseline = 'top';
-      kd.ctx.fillText(text.text, this.pos[0]+5, this.pos[1]+curLine);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(text.text, this.pos.x+5, this.pos.y+curLine);
     }
     this.lineHeight = lineHeight;
     this.textWidth = textWidth;
-    kd.ctx.strokeRect(this.pos[0], this.pos[1], textWidth, lineHeight);
+    ctx.strokeRect(this.pos.x, this.pos.y, textWidth, lineHeight+1);
 
-    if(window.kd.debug) kd.ctx.fillText('Calculated Width: '+Math.round(textWidth),this.pos[0]+5,this.pos[1]+lineHeight);
+    if(window.kd.debug) kd.ctx.fillText('Calculated Width: '+Math.round(textWidth),this.pos.x+5,this.pos.y+lineHeight);
 
-    if (this.linesTo.length > 0) {
-      for (const to of this.linesTo) {
-        const to_skill = window.kd.skills.find(skill => skill.name == to);
+    if (this.gray != 2 && this.gray != 3) {
+      if (this.linesTo.length > 0) {
+        for (const to of this.linesTo) {
+          const to_skill = window.kd.skills.find(skill => skill.name == to);
 
-        if (to_skill) {
-          kd.ctx.beginPath();
-          kd.ctx.moveTo(textWidth+this.pos[0], this.pos[1]+(lineHeight/2));
-          kd.ctx.lineTo(to_skill.pos[0], to_skill.pos[1]+(to_skill.lineHeight/2));
-          kd.ctx.stroke();
+          if (to_skill) {
+            ctx.beginPath();
+            ctx.moveTo(textWidth+this.pos.x, this.pos.y+(lineHeight/2));
+            ctx.lineTo(to_skill.pos.x, to_skill.pos.y+(to_skill.lineHeight/2));
+            ctx.lineTo(to_skill.pos.x+5,to_skill.pos.y+(to_skill.lineHeight/2)-5);
+            ctx.moveTo(to_skill.pos.x, to_skill.pos.y+(to_skill.lineHeight/2));
+            ctx.lineTo(to_skill.pos.x+5,to_skill.pos.y+(to_skill.lineHeight/2)+5);
+            ctx.stroke();
+          }
         }
       }
     }
