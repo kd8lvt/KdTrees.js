@@ -24,7 +24,7 @@ canvas.height = window.innerHeight;
 ];**/
 
 class Skill {
-  constructor(name,pos,linesTo,complete,hoursWorkedOn,requirements,texts) {
+  constructor(name,pos,linesTo,complete,hoursWorkedOn,requirements,parents) {
     if (name == null) { console.error('Error! All Skills need a name!'); return 'nameErr1' } else {this.name = name};
     if (pos == null) { console.error('Error! All Skills need a position!'); return 'posErr1' } else if (typeof pos != typeof {x:0,y:0}) { console.error('Error! Skill Position should be an array!'); return 'posErr2' } else { this.pos = pos }; 
     this.linesTo = linesTo || [];
@@ -37,43 +37,45 @@ class Skill {
     this.complete = complete || false;
     this.hoursWorkedOn = hoursWorkedOn;
     this.requirements = requirements;
-    this.internalText = texts||[];
+    this.internalText = [];
     this.lineHeight = 0;
+    this.parents = parents;
     this.gray = 0;
 
     if (this.parents != null && this.parents.length > 0) {
       var parentStatuses = [];
-      for (const parent of this.parents) {
-        const parent_skill = window.kd.skills.find(skill => skill.name == parent);
-        console.log(parent_skill);
+      for (parent of this.parents) {
+        let parent_skill = window.kd.skills.find(skill => skill.name == parent);
         if (parent_skill) {
-          parentStatuses.push({gray:parent_skill.gray,complete:parent_skill.complete});
+          let tmp = {gray:parent_skill.gray,complete:parent_skill.complete};
+          parentStatuses.push(tmp);
         }
       }
       let worst = [];
-      for (status of parentStatuses) {
-        _worst = '';
-        if (_worst <= 0 && status.complete == true) {
+      for (i in parentStatuses) {
+        let _worst = 0;
+        if (_worst <= 0 && parentStatuses[i].complete == true) {
           _worst = 0;
         }
-        if (_worst <= 1 && (status.complete == 'partial' || status.complete == 'false' || status.gray == 0)) {
+        if (_worst <= 1 && (parentStatuses[i].complete == 'partial' || (parentStatuses[i].complete == false && parentStatuses[i].gray == 0))) {
           _worst = 1;
         }
-        if (_worst <= 2 && (status.gray == 1 || status.gray == 2)) {
+        if (_worst <= 2 && (parentStatuses[i].gray == 1 || parentStatuses[i].gray == 2)) {
           _worst = 2;
         }
         worst.push(_worst);
       }
-      for (status of worst) {
-        if (status > this.gray) {
-          this.gray = status;
+      for (i in worst) {
+        if (worst[i] > this.gray) {
+          this.gray = worst[i];
         }
       }
     }
+    console.log(this.name,this.gray);
   }
-  addText(id,text,size) {
+  addText(id,text,size,grayOut) {
     let textSize = size || 8;
-    return this.internalText.push({id:id,text:text,fontSize:textSize});
+    return this.internalText.push({id:id,text:text,fontSize:textSize,grayOut:grayOut});
   }
   addChild(childId) {
     this.linesTo.push(childId);
@@ -81,10 +83,7 @@ class Skill {
   draw(ctx) {
     if (this.internalText.length < 0) return;
     if (kd.debug) console.log(this.name,this.gray);
-    if (this.gray == 3) return;
-    if (this.gray == 2) {
-      this.background == "rgb(75,75,75)";
-    }
+
 
     let longest = 0;
     for (let i in this.internalText) {
@@ -99,6 +98,9 @@ class Skill {
     var textWidth = kd.ctx.measureText(text).width+10;
     var lineHeight = 0;
     var i=0;
+    if (this.gray == 1) {
+      this.background = "rgb(75,75,75)";
+    }
     ctx.fillStyle = this.background;
     if (this.complete == "partial") {
       if (this.hoursWorkedOn && this.requirements.time) {
@@ -107,12 +109,12 @@ class Skill {
         ctx.fillRect(this.pos.x,this.pos.y,this.textWidth/2,this.lineHeight);
       }
     } else {
-      ctx.fillRect(this.pos.x,this.pos.y,this.textWidth,this.lineHeight);
+      ctx.fillRect(this.pos.x,this.pos.y,this.textWidth,this.lineHeight+2);
     }
     ctx.fillStyle = "#000000";
     for (let text of this.internalText) {
       i++
-      if (text.greyOut == true && this.grey == true) continue;
+      if (text.grayOut == true && (this.gray >= 1)) continue;
       var fontsize = text.fontSize;
       var fontface = 'fontello,"Titillium Web"';
       let curLine = lineHeight;
@@ -130,7 +132,11 @@ class Skill {
 
     if(window.kd.debug) kd.ctx.fillText('Calculated Width: '+Math.round(textWidth),this.pos.x+5,this.pos.y+lineHeight);
 
-    if (this.gray != 2 && this.gray != 3) {
+    if (this.gray == 2) {
+      kd.ctx.clearRect(this.pos.x-5,this.pos.y-5,textWidth+10,lineHeight+10);
+      return;
+    }
+    if (this.gray != 1 && this.gray != 2) {
       if (this.linesTo.length > 0) {
         for (const to of this.linesTo) {
           const to_skill = window.kd.skills.find(skill => skill.name == to);
@@ -139,9 +145,6 @@ class Skill {
             ctx.beginPath();
             ctx.moveTo(textWidth+this.pos.x, this.pos.y+(lineHeight/2));
             ctx.lineTo(to_skill.pos.x, to_skill.pos.y+(to_skill.lineHeight/2));
-            ctx.lineTo(to_skill.pos.x+5,to_skill.pos.y+(to_skill.lineHeight/2)-5);
-            ctx.moveTo(to_skill.pos.x, to_skill.pos.y+(to_skill.lineHeight/2));
-            ctx.lineTo(to_skill.pos.x+5,to_skill.pos.y+(to_skill.lineHeight/2)+5);
             ctx.stroke();
           }
         }

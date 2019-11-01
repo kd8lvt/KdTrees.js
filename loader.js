@@ -15,17 +15,14 @@ window.kd.dynamicLoader = {
 						}
 					}
 				}
-				console.log(target.name,parentDepths);
 				deepest = 0;
 				for (var j in parentDepths) {
 					if (deepest < parentDepths[j]) deepest = parentDepths[j];
 				}
 				depths.push({name:target.name,depth:deepest+1});
 				target.depth = deepest+1;
-				//console.log(depths);
 			}
 		}
-		console.log('Depths: '+JSON.stringify(depths));
 		return depths;
 	},
 	getWidestPerDepth(depths) {
@@ -60,7 +57,6 @@ window.kd.dynamicLoader = {
 			if (!skillFound) {
 				break;
 			}
-			console.log('---------------------------');
 		}
 		return widest;
 	},
@@ -91,7 +87,6 @@ window.kd.dynamicLoader = {
 					lowest = siblings[i].pos.y;
 				}
 			}
-			console.log(skill.name,lowest);
 			if (lowest == 0) {
 				lowest = 95;
 			}
@@ -119,7 +114,6 @@ window.kd.dynamicLoader = {
 		depth = find(depths,skill.name,"name");
 		if (depth.depth > 1) {
 			width = find(widest,depth.depth-1,"depth");
-			console.log(width);
 			prevPos = skills.find(skill => skill.name == width.skill).pos.x;
 			skill.pos.x = (width.width+prevPos);
 			return (width.width+prevPos);
@@ -138,9 +132,9 @@ window.kd.dynamicLoader = {
 			skill = await find(skills,depths[i].name,"name");
 			skill.pos.x = await kd.dynamicLoader.getX(skill,depths,widest);
 			skill.pos.y = await kd.dynamicLoader.getY(skill,depths);
-			window.kd.skills.push(new Skill(skill.name,skill.pos,skill.linesTo,skill.complete,skill.hoursWorkedOn,skill.requirements));
+			window.kd.skills.push(new Skill(skill.name,skill.pos,skill.linesTo,skill.complete,skill.hoursWorkedOn,skill.requirements,skill.parents));
 			for (j in skill.texts) {
-				window.kd.skills[window.kd.skills.length-1].addText(skill.texts[j].id,skill.texts[j].text,skill.texts[j].size);
+				window.kd.skills[window.kd.skills.length-1].addText(skill.texts[j].id,skill.texts[j].text,skill.texts[j].size,skill.texts[j].grayOut);
 			}
 		}
 	}
